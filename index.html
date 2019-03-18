@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>IO Graph</title>
+</head>
+<body>
+    <h2>IO Graph!</h2>
+    <div class="container">
+        <div class="row">
+            <div class="col-6">
+                <form id="graphForm">
+                    <div class="form-group">
+                        <input type="number" class="form-control" id="x">
+                    </div>
+                    <div class="form-group">
+                        <input type="number" class="form-control" id="y">
+                    </div>
+
+                    <input type="submit" class="btn btn-primary" value="Add Vertex">
+                </form>
+                
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        $(function(){
+            var socket = io.connect();
+
+            var $graphForm = $('#graphForm');
+            var $x = $('#x');
+            var $y = $('#y');
+            $graphForm.submit(function(e){
+                
+                console.log('submitted');
+                socket.emit('add vertex', {x: $x.val(), y: $y.val()})
+                // e.preventDefault;
+                return false;
+            });
+
+            socket.on('new vertex', (data)=>{
+                $('body').append('<div> new Vertex: x='+ data.vertex.x + ', y=' + data.vertex.y + '</div>');
+            });
+            
+        });
+
+        var dataset = [
+            {id: 1, x: 25, y: 25 },
+            {id: 2, x: 50, y: 50},
+            {id: 3, x: 200, y: 50},
+            {id: 4, x: 50, y: 200},
+            {id: 5, x: 150, y: 20},
+            {id: 6, x: 50, y: 100},
+        ];
+        
+        var lines = [
+            {vertex_1: 1, vertex_2: 2},
+            {vertex_1: 3, vertex_2: 2},
+            {vertex_1: 5, vertex_2: 1},
+            {vertex_1: 6, vertex_2: 5},
+            {vertex_1: 4, vertex_2: 5},
+        ];
+
+        var svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
+
+        
+
+        svg.selectAll('line')
+            .data(lines)
+            .enter()
+            .append('line')
+            .attr('x1', d => getVertex(d.vertex_1, dataset).x)
+            .attr('y1', d => getVertex(d.vertex_1, dataset).y)
+            .attr('x2', d => getVertex(d.vertex_2, dataset).x)
+            .attr('y2', d => getVertex(d.vertex_2, dataset).y)
+            .attr('stroke', 'black')
+
+        function getVertex(vertex_id, dataset){
+           var element;
+            dataset.forEach(e => {
+                if (e.id === vertex_id) {
+                    element = e;
+                }
+            });
+           return element;
+        }
+        svg.selectAll('circle')
+            .data(dataset)
+            .enter()
+            .append('circle')
+            .attr('cx', (d)=>d.x)
+            .attr('cy', (d)=>d.y)
+            .attr('r', 10)
+            .attr('fill', '#4286f4')
+            .attr('stroke', '#0066cc')
+            .attr('stroke-width', 2)
+            .call(d3.drag()
+                    .on('drag',  dragged))
+        
+        
+        function dragged(d, element) {
+            d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
+
+        }
+    </script>
+</body>
+</html>
