@@ -26,7 +26,7 @@
             </div>
         </div>
     </div>
-
+    
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
@@ -53,29 +53,27 @@
             
         });
 
-        var dataset = [
-            {id: 1, x: 25, y: 25 },
-            {id: 2, x: 50, y: 50},
-            {id: 3, x: 200, y: 50},
-            {id: 4, x: 50, y: 200},
-            {id: 5, x: 150, y: 20},
-            {id: 6, x: 50, y: 100},
-        ];
+        var dataset = [{"id":1,"x":25,"y":25},{"id":2,"x":63,"y":164},{"id":3,"x":286,"y":151},{"id":4,"x":220,"y":44},{"id":5,"x":131,"y":102},{"id":6,"x":175,"y":46}];
+        
+        
         
         var lines = [
-            {vertex_1: 1, vertex_2: 2},
-            {vertex_1: 3, vertex_2: 2},
-            {vertex_1: 5, vertex_2: 1},
-            {vertex_1: 6, vertex_2: 5},
-            {vertex_1: 4, vertex_2: 5},
+            {id:1, vertex_1: 1, vertex_2: 2, direction: "uni"},
+            {id:2, vertex_1: 3, vertex_2: 2, direction: "uni"},
+            {id:3, vertex_1: 5, vertex_2: 1, direction: "uni"},
+            {id:4, vertex_1: 6, vertex_2: 5, direction: "uni"},
+            {id:5, vertex_1: 4, vertex_2: 5, direction: "uni"},
         ];
-
+        
         var svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
 
-        
+        let circles;
+        let links;
 
-        svg.selectAll('line')
-            .data(lines)
+        function draw(dataset){
+            
+            links = svg.selectAll('line')
+            .data(lines, d => 'line' + d.id)
             .enter()
             .append('line')
             .attr('x1', d => getVertex(d.vertex_1, dataset).x)
@@ -84,6 +82,56 @@
             .attr('y2', d => getVertex(d.vertex_2, dataset).y)
             .attr('stroke', 'black')
 
+            circles = svg.selectAll('circle')
+                .data(dataset, d => 'node' + d.id )
+                .enter()
+                .append('circle')
+                .attr('cx', (d)=>d.x)
+                .attr('cy', (d)=>d.y)
+                .attr('r', 10)
+                // .attr('fill', '#4286f4')
+                .attr('stroke', '#0066cc')
+                .attr('stroke-width', 2)
+                .call(d3.drag()
+                        .on('drag',  dragged)
+                        .on('end', dragended))
+                .on('click', function(d){
+                    var coords = d3.mouse(this);
+                    console.log('clicked');
+                    d3.select(this).attr('fill', '#0066cc');
+                    d3.event.stopPropagation();
+                    
+                })
+                .on('mouseover', function(d){
+                    d3.select(this)
+                        .attr('fill', '#0066cc')
+                })
+                .on('mouseout', function(d){
+                    d3.select(this)
+                        .attr('fill', '#000')
+                })
+            
+            
+
+            svg.on('click', function(){
+                var coords = d3.mouse(this);
+                dataset.push({id:Math.floor(Math.random() * 100 + 6), x: coords[0], y: coords[1]});
+                
+                draw(dataset);
+                // window.prompt('ok?');
+            });
+
+        }
+        
+        
+
+        function clearSVG(){
+            d3.select("svg").remove();
+            svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
+            circles = null;
+            links = null;
+        }
+                
         function getVertex(vertex_id, dataset){
            var element;
             dataset.forEach(e => {
@@ -91,26 +139,25 @@
                     element = e;
                 }
             });
+            
            return element;
         }
-        svg.selectAll('circle')
-            .data(dataset)
-            .enter()
-            .append('circle')
-            .attr('cx', (d)=>d.x)
-            .attr('cy', (d)=>d.y)
-            .attr('r', 10)
-            .attr('fill', '#4286f4')
-            .attr('stroke', '#0066cc')
-            .attr('stroke-width', 2)
-            .call(d3.drag()
-                    .on('drag',  dragged))
         
         
-        function dragged(d, element) {
+        function dragged(d) {
             d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
 
         }
+
+        function dragended(d){
+            // console.log(d.id, d3.event.x, d3.event.y);
+            dataset[dataset.indexOf(d)] = {id: d.id, x: d3.event.x, y: d3.event.y }
+            clearSVG();
+            draw(dataset);
+            
+        }
+
+        draw(dataset);
     </script>
 </body>
 </html>
