@@ -9,28 +9,35 @@ connections = [];
 
 server.listen(3000);
 
-const apiUrl = 'http://localhost:8080';
+app.use(express.static(__dirname + '/public'))
+
+const apiUrl = 'http://[::1]:8080';
+
 
 console.log("server running...");
 app.get('/', function(req, res){
-    res.sendFile(__dirname + '/index.html');
+    res.sendFile(__dirname + '/public/index.html');
 });
 
 app.get('/vertices', function(req, res){
-    var dataset = [
-        {id: 1, x: 25, y: 25 },
-        {id: 2, x: 50, y: 50},
-        {id: 3, x: 200, y: 50},
-        {id: 4, x: 50, y: 200},
-        {id: 5, x: 150, y: 20},
-        {id: 6, x: 50, y: 100},
-    ];
-    res.json(dataset);
+    axios.get(apiUrl + '/vertices').then(response=>{
+        res.json(response.data);
+    })
+    
 });
 
-axios.get(apiUrl + '/vertices').then(res=>{
-    console.log(res.data);
+app.get('/vertices/update', function(req, res){
+    let params = req.query;
+    console.log(params)
+    axios.post(apiUrl+'vertices/update/'+ params.id, {
+        x: params.x,
+        y: params.y
+    }).then(result=>{
+        res.json(result.data)
+    })
 })
+
+
 
 io.sockets.on('connection', (socket)=>{
     connections.push(socket);
@@ -54,3 +61,4 @@ io.sockets.on('connection', (socket)=>{
         });
     });
 })
+
