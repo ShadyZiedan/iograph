@@ -3,6 +3,8 @@ var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io').listen(server);
 var axios = require('axios');
+var bodyParser = require('body-parser');
+
 
 users = [];
 connections = [];
@@ -10,6 +12,8 @@ connections = [];
 server.listen(3000);
 
 app.use(express.static(__dirname + '/public'))
+app.use(bodyParser.urlencoded({extended: false}))
+app.use(bodyParser.json())
 
 const apiUrl = 'http://[::1]:8080';
 
@@ -22,19 +26,74 @@ app.get('/', function(req, res){
 app.get('/vertices', function(req, res){
     axios.get(apiUrl + '/vertices').then(response=>{
         res.json(response.data);
+    }).catch(e=>{
+        console.log(e.message)
     })
     
 });
 
-app.get('/vertices/update', function(req, res){
-    let params = req.query;
-    console.log(params)
-    axios.post(apiUrl+'vertices/update/'+ params.id, {
-        x: params.x,
-        y: params.y
+app.post('/vertices/update', function(req, res){
+    let {id, x, y} = req.body
+    
+    axios.put(apiUrl+'/vertices/'+ id, {
+        x: x,
+        y: y
     }).then(result=>{
         res.json(result.data)
+    }).catch(e=>{
+        console.log(e.message)
     })
+    
+})
+
+app.post('/vertices/add', function(req, res){
+    let {graph_id, x, y} = req.body
+    
+    axios.post(apiUrl+'/vertices', {
+        x: x,
+        y: y,
+        graph_id: graph_id
+    }).then(result=>{
+        res.json(result.data)
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+})
+
+app.post('/vertices/delete', function(req, res){
+    let {id} = req.body
+    
+    axios.delete(apiUrl+'/vertices/'+id).then(result=>{
+        res.json(result.data)
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+})
+
+app.get('/links', function(req, res){
+    axios.get(apiUrl + '/links').then(response=>{
+        res.json(response.data);
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+});
+
+app.post('/links/add', function(req, res){
+    let {vertex_1, vertex_2, weight} = req.body
+    
+    axios.post(apiUrl+'/links', {
+        vertex_1: vertex_1,
+        vertex_2: vertex_2,
+        weight: weight
+    }).then(result=>{
+        res.json(result.data)
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
 })
 
 

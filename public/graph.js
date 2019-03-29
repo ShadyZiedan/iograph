@@ -21,18 +21,13 @@ var graphId = 1;
 // let nodes = [{"id":1,"x":25,"y":25},{"id":2,"x":63,"y":164},{"id":3,"x":286,"y":151},{"id":4,"x":220,"y":44},{"id":5,"x":131,"y":102},{"id":6,"x":175,"y":46}];
 let nodes = [];
 
-var lines = [
-    {id:1, vertex_1: 1, vertex_2: 2, direction: "uni"},
-    // {id:2, vertex_1: 3, vertex_2: 2, direction: "uni"},
-    // {id:3, vertex_1: 5, vertex_2: 1, direction: "uni"},
-    // {id:4, vertex_1: 6, vertex_2: 5, direction: "uni"},
-    // {id:5, vertex_1: 4, vertex_2: 5, direction: "uni"},
-];
+var lines = [];
 
 var svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
 
 let circles;
 let links;
+let nodeLabels;
 
 let linkBuild = [];
 
@@ -40,6 +35,8 @@ let wasMoved = false;
 let circleClicked = false;
 
 let sourceTarget = [];
+let selectedNode = null;
+
 function draw(nodes){
     clearSVG()
     
@@ -75,7 +72,16 @@ function draw(nodes){
         .call(d3.drag()
                 .on('drag',  dragged)
                 .on('end', dragended))
+        .on('dblclick', function(d){
+            deleteNode(d.id)
+        })
     
+        nodeLabels = svg.append('text')
+                        .data(nodes)
+                        .enter()
+                        .attr('x', d=>d.x)
+                        .attr('y', d=>d.y - 10)
+                        .text(d=> d.id)
     
         svg.on('click', function(){
             if(circleClicked) return;
@@ -98,12 +104,17 @@ function nodeClick(d, element){
     var coords = d3.mouse(element);
     if(sourceTarget.length === 0 ){
         sourceTarget.push(d.id)
-    } else if(sourceTarget.length === 1){
+    } else if(sourceTarget.length === 1 && d.id !== sourceTarget[0]){
+        
         sourceTarget.push(d.id)
+        let weight = prompt('Enter Weight', 0);
+        addLink(sourceTarget[0], sourceTarget[1], weight)
         findPath();
+        sourceTarget=[]
+        circleClicked=false;
     }
     
-    d3.select(element).raise().classed('active', true);
+    d3.select(element).raise().attr('fill', '#fff');
 
 }
 
@@ -143,12 +154,15 @@ function dragended(d){
         wasMoved = false;
     } else {
         circleClicked = true;
+        
+        selectedNode = d.id;
         nodeClick(d, this)
     }
    
 }
 
 getVertices();
+getLinks();
 
 // init()
 // // draw(nodes);
@@ -159,17 +173,19 @@ function findPath(){
 
 }
 
-function addVertex(graphId, x, y){
-    $.get(`http://localhost:3000/vertices/add?graph_id=${graphId}&x=${x}&y=${y}`, function(data){
-        console.log(data)
-        
-    })
-}
 
 function updateVertex(id, x, y){
-    $.get(`http://localhost:3000/vertices/update?id=${id}&x=${x}&y=${y}`, function(data){
-        nodes = data;
-        draw(nodes);
+    
+    $.ajax({
+        url: 'http://localhost:3000/vertices/update/', 
+        type: 'POST', 
+        contentType: 'application/json', 
+        data: JSON.stringify({'id':id, 'x': x, 'y': y}),
+        success: function(data){
+            // nodes.push(data);
+            // draw(nodes)
+            getVertices()
+        }
     })
 }
 
@@ -181,3 +197,58 @@ function getVertices(){
     })
 }
 
+function getLinks(){
+    $.get(`http://localhost:3000/links`, function(data){
+        lines = data;
+        draw(nodes)
+        
+    })
+}
+
+function addNode(graph_id, x, y ){
+    
+    $.ajax({
+        url: 'http://localhost:3000/vertices/add', 
+        type: 'POST', 
+        contentType: 'application/json', 
+        data: JSON.stringify({graph_id: graph_id, x: x, y: y}),
+        success: function(data){
+            // nodes.push(data);
+            // draw(nodes)
+            getVertices();
+        }
+    
+    })
+}
+
+function deleteNode(id){
+    $.ajax({
+        url: 'http://localhost:3000/vertices/delete', 
+        type: 'POST', 
+        contentType: 'application/json', 
+        data: JSON.stringify({id: id}),
+        success: function(data){
+            // nodes.push(data);
+            // draw(nodes)
+            getVertices();
+        }
+    
+    })
+}
+
+function addLink(vertex_1, vertex_2, weight ){
+    
+    $.ajax({
+        url: 'http://localhost:3000/links/add', 
+        type: 'POST', 
+        contentType: 'application/json', 
+        data: JSON.stringify({vertex_1: vertex_1, vertex_2: vertex_2, weight: weight}),
+        success: function(data){
+            // nodes.push(data);
+            // draw(nodes)
+            getVertices();
+            getLinks();
+        }
+    
+    })
+}
