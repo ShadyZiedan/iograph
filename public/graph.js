@@ -1,45 +1,56 @@
 var socket = io.connect();
 
-var $graphForm = $('#graphForm');
-var $x = $('#x');
-var $y = $('#y');
-$graphForm.submit(function(e){
-    
-    console.log('submitted');
-    socket.emit('add vertex', {x: $x.val(), y: $y.val()})
-    // e.preventDefault;
-    return false;
-});
-
-socket.on('new vertex', (data)=>{
-    $('body').append('<div> new Vertex: x='+ data.vertex.x + ', y=' + data.vertex.y + '</div>');
-});
-
 
 var graphId = 1;
 
-// let nodes = [{"id":1,"x":25,"y":25},{"id":2,"x":63,"y":164},{"id":3,"x":286,"y":151},{"id":4,"x":220,"y":44},{"id":5,"x":131,"y":102},{"id":6,"x":175,"y":46}];
 let nodes = [];
 
 var lines = [];
 
-var svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
+var svg = d3.select('#graph').append('svg').attr('width', 800).attr('height', 800);
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "triangle")
+    .attr("refX", 6)
+    .attr("refY", 6)
+    .attr("markerWidth", 30)
+    .attr("markerHeight", 30)
+    .attr("markerUnits","userSpaceOnUse")
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M 0 0 12 6 0 12 3 6")
+    .style("fill", "black");
+  
 
 let circles;
 let links;
 let nodeLabels;
+let linkLabels;
 
-let linkBuild = [];
 
 let wasMoved = false;
 let circleClicked = false;
 
 let sourceTarget = [];
+let sourceTargetPath = [];
 let selectedNode = null;
 
 function draw(nodes){
     clearSVG()
+
+    svg.append("svg:defs").append("svg:marker")
+    .attr("id", "triangle")
+    .attr("refX", 6)
+    .attr("refY", 6)
+    .attr("markerWidth", 30)
+    .attr("markerHeight", 30)
+    .attr("markerUnits","userSpaceOnUse")
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M 0 0 12 6 0 12 3 6")
+    .style("fill", "black");
+
     
+
     links = svg.selectAll('line')
     .data(lines, d => 'line' + d.id)
     .enter()
@@ -48,7 +59,11 @@ function draw(nodes){
     .attr('y1', d => getVertex(d.vertex_1, nodes).y)
     .attr('x2', d => getVertex(d.vertex_2, nodes).x)
     .attr('y2', d => getVertex(d.vertex_2, nodes).y)
-    .attr('stroke', 'black')
+    .attr('stroke', d=> d.color === 'red'? 'red' : 'black')
+    .attr("stroke-width", 2)
+    .attr("marker-end", "url(#triangle)")
+
+    
 
     circles = svg.selectAll('circle')
         .data(nodes, d => 'node' + d.id )
@@ -56,7 +71,7 @@ function draw(nodes){
         .append('circle')
         .attr('cx', (d)=>d.x)
         .attr('cy', (d)=>d.y)
-        .attr('r', 10)
+        .attr('r', 4)
         // .attr('fill', '#4286f4')
         .attr('stroke', '#0066cc')
         .attr('stroke-width', 2)
@@ -75,23 +90,51 @@ function draw(nodes){
         .on('dblclick', function(d){
             deleteNode(d.id)
         })
+        .on('click', function(d){
+            d3.event.stopPropagation();
+
+            if(d3.event.ctrlKey){
+                console.log('ctrl on node')
+                if(sourceTargetPath.length === 0 ){
+                    sourceTargetPath.push(d.id)
+                } else if(sourceTargetPath.length === 1 && d.id !== sourceTargetPath[0]){
+                    
+                    sourceTargetPath.push(d.id)
+                    
+                    findPath(sourceTargetPath[0], sourceTargetPath[1], graphId);
+                    sourceTargetPath=[]
+                    circleClicked=false;
+                }
+                return;
+            }
+            circleClicked = true;
+            selectedNode = d.id;
+            nodeClick(d, this)
+        })
     
-        nodeLabels = svg.append('text')
+        nodeLabels = svg.append('g').selectAll('text')
                         .data(nodes)
                         .enter()
+                        .append('text')
                         .attr('x', d=>d.x)
                         .attr('y', d=>d.y - 10)
                         .text(d=> d.id)
+
+        linkLabels = svg.append('g').selectAll('text')
+                        .data(lines)
+                        .enter()
+                        .append('text')
+                        .attr('x', d=>(getVertex(d.vertex_1, nodes).x + getVertex(d.vertex_2, nodes).x)/2 )
+                        .attr('y', d=>(getVertex(d.vertex_1, nodes).y + getVertex(d.vertex_2, nodes).y)/2 - 5)
+                        .text(d=> d.weight)
     
         svg.on('click', function(){
             if(circleClicked) return;
             console.log('svg clicked')
+            
             var coords = d3.mouse(this);
             addNode(graphId, coords[0], coords[1]);
-            nodes.push({id:Math.floor(Math.random() * 100 + 6), x: coords[0], y: coords[1]});
-            
-            draw(nodes);
-            // window.prompt('ok?');
+                     
             
         });
     
@@ -99,6 +142,7 @@ function draw(nodes){
 }
 
 function nodeClick(d, element){
+    
     // d3.event.stopPropagation();
     // if( d3.event.defaultPrevented ) return;
     var coords = d3.mouse(element);
@@ -109,7 +153,7 @@ function nodeClick(d, element){
         sourceTarget.push(d.id)
         let weight = prompt('Enter Weight', 0);
         addLink(sourceTarget[0], sourceTarget[1], weight)
-        findPath();
+        // findPath();
         sourceTarget=[]
         circleClicked=false;
     }
@@ -120,7 +164,7 @@ function nodeClick(d, element){
 
 function clearSVG(){
     d3.select("svg").remove();
-    svg = d3.select('body').append('svg').attr('width', 500).attr('height', 500);
+    svg = d3.select('#graph').append('svg').attr('width', 800).attr('height', 800);
     circles = null;
     links = null;
 }
@@ -145,6 +189,7 @@ function dragged(d) {
 
 function dragended(d){
     d3.event.sourceEvent.stopPropagation();
+    
     if(wasMoved){
         console.log(d.id, d3.event.x, d3.event.y);
         nodes[nodes.indexOf(d)] = {id: d.id, x: d3.event.x, y: d3.event.y }
@@ -153,25 +198,15 @@ function dragended(d){
         // draw(nodes);
         wasMoved = false;
     } else {
-        circleClicked = true;
-        
-        selectedNode = d.id;
-        nodeClick(d, this)
+        // circleClicked = true;
+        // selectedNode = d.id;
+        // nodeClick(d, this)
     }
    
 }
 
 getVertices();
 getLinks();
-
-// init()
-// // draw(nodes);
-
-
-function findPath(){
-    // call api to get path
-
-}
 
 
 function updateVertex(id, x, y){
@@ -184,7 +219,8 @@ function updateVertex(id, x, y){
         success: function(data){
             // nodes.push(data);
             // draw(nodes)
-            getVertices()
+
+            // getVertices()
         }
     })
 }
@@ -215,7 +251,8 @@ function addNode(graph_id, x, y ){
         success: function(data){
             // nodes.push(data);
             // draw(nodes)
-            getVertices();
+
+            // getVertices();
         }
     
     })
@@ -230,7 +267,8 @@ function deleteNode(id){
         success: function(data){
             // nodes.push(data);
             // draw(nodes)
-            getVertices();
+
+            // getVertices();
         }
     
     })
@@ -246,9 +284,71 @@ function addLink(vertex_1, vertex_2, weight ){
         success: function(data){
             // nodes.push(data);
             // draw(nodes)
-            getVertices();
-            getLinks();
+            // getVertices();
+            // getLinks();
         }
     
     })
 }
+
+function findPath(source, target, graph){
+    console.log('findpath', source, target, graph)
+    lines = lines.map(line=>{
+        line.color = 'black';
+        return line;
+    })
+    $.get(`http://localhost:3000/path?start=${source}&end=${target}&graph=${graph}`, function(data){
+        // nodes = data;
+        // draw(nodes)
+        let redLinks = data[1];
+        let newLines = lines.map(line=>{
+
+            for(let redlink of redLinks){
+                if(redlink.id === line.id){
+                    line.color = 'red';
+                    return line;
+                }
+            }
+            return line;
+            
+        })
+
+        lines = newLines;
+        draw(nodes)
+        
+        console.log(data)
+        
+    })
+}
+
+// Socket IO
+socket.on('new vertex', (data)=>{
+    nodes.push(data);
+    draw(nodes);
+});
+
+socket.on('update vertex', (data)=>{
+    console.log(data)
+    let newNodes = nodes.map(node=>{
+        if(node.id === data.id){
+            return data;
+        } else {
+            return node;
+        }
+    })
+    nodes = newNodes;
+    draw(nodes);
+});
+
+socket.on('delete vertex', (data)=>{
+    let newNodes = nodes.filter(node=>{
+        return node.id !== data;
+    });
+    nodes = newNodes;
+    draw(nodes);
+});
+
+socket.on('new link', (data)=>{
+    lines.push(data);
+    draw(nodes)
+});

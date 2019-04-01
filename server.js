@@ -39,6 +39,7 @@ app.post('/vertices/update', function(req, res){
         x: x,
         y: y
     }).then(result=>{
+        io.sockets.emit('update vertex', result.data);
         res.json(result.data)
     }).catch(e=>{
         console.log(e.message)
@@ -54,7 +55,9 @@ app.post('/vertices/add', function(req, res){
         y: y,
         graph_id: graph_id
     }).then(result=>{
-        res.json(result.data)
+        io.sockets.emit('new vertex', result.data);
+        // res.json(result.data)
+        
     }).catch(e=>{
         console.log(e.message)
     })
@@ -65,6 +68,7 @@ app.post('/vertices/delete', function(req, res){
     let {id} = req.body
     
     axios.delete(apiUrl+'/vertices/'+id).then(result=>{
+        io.sockets.emit('delete vertex', id);
         res.json(result.data)
     }).catch(e=>{
         console.log(e.message)
@@ -89,12 +93,23 @@ app.post('/links/add', function(req, res){
         vertex_2: vertex_2,
         weight: weight
     }).then(result=>{
+        io.sockets.emit('new link', result.data);
         res.json(result.data)
     }).catch(e=>{
         console.log(e.message)
     })
     
 })
+
+app.get('/path', function(req, res){
+    let {start, end, graph} = req.query;
+    axios.get(apiUrl + `/path?start=${start}&end=${end}&graph=${graph}`).then(response=>{
+        res.json(response.data);
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+});
 
 
 
@@ -110,13 +125,16 @@ io.sockets.on('connection', (socket)=>{
 
     // New Vertex
     socket.on('add vertex', (data)=>{
-        io.sockets.emit('new vertex', {vertex: data});
+        
         axios.post(apiUrl + '/vertices/create', {
             x: data.x,
             y: data.y,
             graph_id: 1
         }).then(res=>{
             console.log(res.data);
+            io.sockets.emit('new vertex', res.data);
+        }).catch(e=>{
+            console.log(e.message)
         });
     });
 })
