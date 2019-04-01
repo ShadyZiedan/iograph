@@ -1,6 +1,42 @@
 var socket = io.connect();
 
+let graphForm = $('#graphForm');
+let name = $('#name');
 
+graphForm.submit(function(e){
+
+    console.log('submitted', name.val());
+    e.preventDefault;
+    $.ajax({
+        url: 'http://localhost:3000/graphs', 
+        type: 'POST', 
+        contentType: 'application/json', 
+        data: JSON.stringify({name: name.val()}),
+        success: function(data){
+            graphId = data.id
+            graphForm.attr('style', 'display: none;')
+        }
+    
+    })
+    
+    return false;
+});
+
+function initGraph(){
+    $.get(`http://localhost:3000/graphs`, function(data){
+        if(data.length > 0){
+            graphId = data[0].id;
+            getVertices()
+            getLinks()
+            draw(nodes)
+        } else{
+            graphForm.attr('style', 'display: block;')
+        }
+                
+    })
+}
+
+initGraph();
 var graphId = 1;
 
 let nodes = [];
@@ -205,8 +241,10 @@ function dragended(d){
    
 }
 
-getVertices();
-getLinks();
+
+
+// getVertices();
+// getLinks();
 
 
 function updateVertex(id, x, y){
@@ -322,6 +360,15 @@ function findPath(source, target, graph){
 }
 
 // Socket IO
+socket.on('New Graph', (data)=>{
+    graphId = data.id;
+    getVertices()
+    getLinks()
+
+    draw(nodes);
+});
+
+
 socket.on('new vertex', (data)=>{
     nodes.push(data);
     draw(nodes);

@@ -23,6 +23,33 @@ app.get('/', function(req, res){
     res.sendFile(__dirname + '/public/index.html');
 });
 
+
+
+app.get('/graphs', function(req, res){
+    axios.get(apiUrl + '/graphs').then(response=>{
+        res.json(response.data);
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+});
+
+app.post('/graphs', function(req, res){
+    console.log('here')
+    let {name} = req.body
+    
+    axios.post(apiUrl+'/graphs', {
+        name: name
+    }).then(result=>{
+        io.sockets.emit('New Graph', result.data);
+        res.json(result.data)
+    }).catch(e=>{
+        console.log(e.message)
+    })
+    
+})
+
+
 app.get('/vertices', function(req, res){
     axios.get(apiUrl + '/vertices').then(response=>{
         res.json(response.data);
